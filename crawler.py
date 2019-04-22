@@ -1,9 +1,8 @@
 import logging
 import re
+import os
 from urllib.parse import urlparse
 from corpus import Corpus
-import os
-import lxml
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +21,9 @@ class Crawler:
         This method starts the crawling process which is scraping urls from the next available link in frontier and adding
         the scraped links to the frontier
         """
-        print("Start crawling")
         while self.frontier.has_next_url():
             url = self.frontier.get_next_url()
             logger.info("Fetching URL %s ... Fetched: %s, Queue size: %s", url, self.frontier.fetched, len(self.frontier))
-            print("URL: ", url)
             url_data = self.fetch_url(url)
 
             for next_link in self.extract_next_links(url_data):
@@ -42,22 +39,21 @@ class Crawler:
         :return: a dictionary containing the url, content and the size of the content. If the url does not
         exist in the corpus, a dictionary with content set to None and size set to 0 can be returned.
         """
-        
-        file_address = self.corpus.get_file_name(url)
-        size = os.path.getsize(url)
-
-        print("File add: ", file_address)
-        print("Size: ", size)
-
-        with open(url, "rb") as binary_content:
-            content = binary_content.read()
-            print(content)
-
         url_data = {
             "url": url,
             "content": None,
             "size": 0
         }
+
+        file_name = self.corpus.get_file_name(url)
+
+        if file_name != None:
+            with open(file_name, "rb") as text_file:
+                html_data = text_file.read()
+                url_data["content"] = html_data.encode('utf-8')
+
+            url_data["size"] = os.path.getsize(file_name)
+
         return url_data
 
     def extract_next_links(self, url_data):
