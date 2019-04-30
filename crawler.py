@@ -1,6 +1,7 @@
 import logging
 import re
 import os
+import lxml.html
 from urllib.parse import urlparse
 from corpus import Corpus
 
@@ -50,7 +51,7 @@ class Crawler:
         if file_name != None:
             with open(file_name, "rb") as text_file:
                 html_data = text_file.read()
-                url_data["content"] = html_data.encode('utf-8')
+                url_data["content"] = html_data
 
             url_data["size"] = os.path.getsize(file_name)
 
@@ -63,10 +64,19 @@ class Crawler:
         list of urls in their absolute form (some links in the content are relative and needs to be converted to the
         absolute form). Validation of links is done later via is_valid method. It is not required to remove duplicates
         that have already been fetched. The frontier takes care of that.
-
         Suggested library: lxml
         """
+
+        html = url_data["content"]
+        url = url_data["url"]
+
+        html = lxml.html.make_links_absolute(html, url)
+
         outputLinks = []
+
+        for ele, attr, link, pos in lxml.html.iterlinks(html):
+        	outputLinks.append(link)
+        
         return outputLinks
 
     def is_valid(self, url):
@@ -89,4 +99,3 @@ class Crawler:
         except TypeError:
             print("TypeError for ", parsed)
             return False
-
