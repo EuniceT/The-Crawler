@@ -4,6 +4,7 @@ import os
 import lxml.html
 from urllib.parse import urlparse
 from corpus import Corpus
+from lxml.html import fromstring
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,9 @@ class Crawler:
     def __init__(self, frontier):
         self.frontier = frontier
         self.corpus = Corpus()
+        self.url_count = 0
+        self.subdomain_count = 0
+        self.subdomains = {}
 
     def start_crawling(self):
         """
@@ -69,18 +73,22 @@ class Crawler:
 
         html = url_data["content"]
         url = url_data["url"]
+        #print("url  : ", url)
 
         html = lxml.html.make_links_absolute(html, url)
-
         outputLinks = []
 
         for ele, attr, link, pos in lxml.html.iterlinks(html):
-            if attr == "href":
-                outputLinks.append(link)
-            #print(attr)
+           if attr == "href":
+               outputLinks.append(link)
+               #print(link, " ", self.is_valid(link))
             
         
         return outputLinks
+
+    def get_subdomain(self, hostname):
+        end = hostname.find(".ics.uci.edu") 
+        return hostname[0:end]
 
     def is_valid(self, url):
         """
@@ -94,12 +102,16 @@ class Crawler:
         if parsed.scheme not in set(["http", "https"]):
             return False
         try:
+            self.subdomains[self.get_subdomain(parsed.hostname)] += 1
+            # 1. 10.5k 2. 9287, 3. (9127 - 65, 8665 - 40)
             return ".ics.uci.edu" in parsed.hostname \
-                   and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
+                    and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
-                                    + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower())
+                                    + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
+                    and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
+                    and len(parsed.path.lower()) < 40 
 
         except TypeError:
             print("TypeError for ", parsed)
