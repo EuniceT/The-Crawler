@@ -75,7 +75,10 @@ class Crawler:
         outputLinks = []
 
         for ele, attr, link, pos in lxml.html.iterlinks(html):
-        	outputLinks.append(link)
+            if attr == "href":
+                outputLinks.append(link)
+            #print(attr)
+            
         
         return outputLinks
 
@@ -84,6 +87,8 @@ class Crawler:
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
+
+        Focus on different types of URLs that may have properties that impede process of crawler
         """
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
