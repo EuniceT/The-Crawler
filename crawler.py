@@ -79,6 +79,13 @@ class Crawler:
         
         return outputLinks
 
+    def dup_subdomain(self, url_path):
+        p_list = url_path.split("/")
+        p_set = set(p_list)
+        return len(p_set) != len(p_list)
+
+
+    '''1:10k  2:9296'''
     def is_valid(self, url):
         """
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
@@ -94,8 +101,11 @@ class Crawler:
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
-                                    + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower())
+                                    + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
+                    and not self.dup_subdomain(parsed.path.lower())
 
         except TypeError:
             print("TypeError for ", parsed)
             return False
+
+    
