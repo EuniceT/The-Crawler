@@ -20,6 +20,8 @@ class Crawler:
         self.url_count = 0
         self.subdomain_count = 0
         self.subdomains = {}
+        self.downloaded_urls = []
+        self.traps = []
 
     def start_crawling(self):
         """
@@ -104,14 +106,19 @@ class Crawler:
         try:
             self.subdomains[self.get_subdomain(parsed.hostname)] += 1
             # 1. 10.5k 2. 9287, 3. (9127 - 65, 8665 - 40)
-            return ".ics.uci.edu" in parsed.hostname \
+            if ".ics.uci.edu" in parsed.hostname \
                     and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
                     and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
-                    and len(parsed.path.lower()) < 40 
+                    and len(parsed.path.lower()) < 40 :
+                self.downloaded_urls.append(url)
+                return True
+            else:
+                self.traps.append(url)
+                return False
 
         except TypeError:
             print("TypeError for ", parsed)
