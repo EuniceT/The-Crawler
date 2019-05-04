@@ -2,6 +2,7 @@ import logging
 import re
 import os
 import lxml.html
+import re
 from urllib.parse import urlparse
 from corpus import Corpus
 from difflib import SequenceMatcher
@@ -87,18 +88,20 @@ class Crawler:
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
-    def check_similar_links(self, parsed):
+    def not_similar_links(self, parsed):
         path = parsed.geturl()
         p_list = path.split("?")
 
         if len(p_list) > 1:
+            query = p_list[1]
+            e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
             if p_list[0] not in self.url_dict:
-                self.url_dict[p_list[0]] = p_list[1]
-            else:
-                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], p_list[1])
-                return ratio > 0.5
+                self.url_dict[p_list[0]] = e_query
+            else:            
+                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], e_query).ratio()
+                return ratio < 0.5
         else:
-            return False
+            return True
 
 
     '''1:10k  2:9219'''
@@ -107,8 +110,6 @@ class Crawler:
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
-
-        Focus on different types of URLs that may have properties that impede process of crawler
         """
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
@@ -121,7 +122,8 @@ class Crawler:
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
                     and not self.dup_subdomain(parsed.path.lower()) \
-                    and not self.check_similar_links(parsed)
+                    and self.not_similar_links(parsed) \
+                    and len(parsed.path.lower()) < 40 
 
         except TypeError:
             print("TypeError for ", parsed)
