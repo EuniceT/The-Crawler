@@ -5,6 +5,7 @@ import lxml.html
 from urllib.parse import urlparse
 from corpus import Corpus
 from lxml.html import fromstring
+from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class Crawler:
         self.traps = []
 
         self.subdomains["ics.uci.edu"] = 0
+        self.url_dict = {}
 
     def start_crawling(self):
         """
@@ -87,7 +89,6 @@ class Crawler:
                outputLinks.append(link)
                #print(link, " ", self.is_valid(link))
             
-        
         return outputLinks
 
     def get_subdomain(self, hostname):
@@ -116,8 +117,27 @@ class Crawler:
                         self.subdomains["ics.uci.edu"] += 1
             else:
                 self.subdomains[subd] = 1
-        
 
+    def dup_subdomain(self, url_path):
+        p_list = url_path.split("/")
+        p_set = set(p_list)
+        return len(p_set) != len(p_list)
+
+    def check_similar_links(self, parsed):
+        path = parsed.geturl()
+        p_list = path.split("?")
+
+        if len(p_list) > 1:
+            if p_list[0] not in self.url_dict:
+                self.url_dict[p_list[0]] = p_list[1]
+            else:
+                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], p_list[1])
+                return ratio > 0.5
+        else:
+            return False
+
+
+    '''1:10k  2:9219'''
     def is_valid(self, url):
         """
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
@@ -138,7 +158,9 @@ class Crawler:
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
                     and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
-                    and len(parsed.path.lower()) < 50 :
+                    and len(parsed.path.lower()) < 50 \
+                    and not self.dup_subdomain(parsed.path.lower()) \
+                    and not self.check_similar_links(parsed):
                 
                     self.add_subdomain(parsed)
                     self.downloaded_urls.append(url)
@@ -150,7 +172,11 @@ class Crawler:
                     self.traps.append(url)
                 
             return False
+                    
+
 
         except TypeError:
             print("TypeError for ", parsed)
             return False
+
+    
