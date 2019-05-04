@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from corpus import Corpus
 import lxml.html
 from lxml import etree
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,8 @@ class Crawler:
         self.out_links = dict()
         self.checked = dict()
         self.traps=set()
-        self.q = dict()
+        # self.q = dict()
+        self.q = deque()
 
     def start_crawling(self):
         """
@@ -121,10 +123,10 @@ class Crawler:
                 return False
         #make a threshold
         threshold= 100
-        # query = parsed.query
+        query = parsed.query
 
         #string of everything before the query
-        # url_path = url[:url.find(query)-1] 
+        url_path = url[:url.find(query)-1] 
 
         # self.q[query] = url_path
         # for k,v in self.q.items():
@@ -135,30 +137,36 @@ class Crawler:
         #if it has a query
         #check if query is in if it is add
 
-        # if len(q)!=0:
-        #   if i in self.checked:
-        #       self.checked[i]+=1
-        #   else:
-        #       self.checked[i] =1
-        #   if self.checked[i]>threshold:
-        #       self.traps.add(url)
-        #       return False
+        if len(query)!=0:
+          if url_path in self.checked:
+              self.checked[url_path]+=1
+          else:
+              self.checked[url_path] =1
+          if self.checked[url_path]>threshold:
+              self.traps.add(url)
+              return False
 
         #check if dict is bigger than threshold
-        p_list = url.split("?")
 
-        if len(p_list) > 1:
-            query = p_list[1]
-            e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
+        # p_list = url.split("?")
 
-            if p_list[0] not in self.q:
-                self.q[p_list[0]] = p_list[1]
-            else:
-                # print("0: ", self.url_dict[p_list[0]])
-                # print("1: ", p_list[1])
-                seq = SequenceMatcher(None, self.q[p_list[0]], p_list[1])
-                return seq.ratio() > 0.5
+        # if len(p_list) > 1:
+        #     query = p_list[1]
+        #     e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
 
+        #     if p_list[0] not in self.q:
+        #         self.q[p_list[0]] = p_list[1]
+        #     else:
+        #         # print("0: ", self.url_dict[p_list[0]])
+        #         # print("1: ", p_list[1])
+        #         seq = SequenceMatcher(None, self.q[p_list[0]], p_list[1])
+        #         return seq.ratio() > 0.5
+        if len(parsed.path.lower()) > 100:
+            return False
+        if len(self.q) > 4:
+            self.q.popleft()
+        else:
+            self.q.append(url)
         try:
             return ".ics.uci.edu" in parsed.hostname \
                    and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
