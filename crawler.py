@@ -119,7 +119,7 @@ class Crawler:
                 self.subdomains[subd] = 1
 
     def dup_subdomain(self, url_path):
-        p_list = url_path.split("/")
+        p_list = list(filter(None, url_path.split("/")))
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
@@ -129,6 +129,7 @@ class Crawler:
         if len(p_list) > 1:
             query = p_list[1]
             e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
+
             if p_list[0] not in self.url_dict:
                 self.url_dict[p_list[0]] = p_list[1]
             else:
@@ -154,6 +155,8 @@ class Crawler:
             return False
         try:
             # 1. 10.5k 2. 9287, 3. (9127 - 65, 8665 - 40)
+            # taking out not similar - 8893 with dup_subdomain updated; with adding not similar down to 3107
+
             if ".ics.uci.edu" in parsed.hostname:
                 if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
@@ -165,11 +168,13 @@ class Crawler:
                     and self.not_similar_links(parsed.geturl()):
                 
                     self.add_subdomain(parsed)
-                    self.downloaded_urls.append(url)
+                    if url not in self.downloaded_urls:
+                        self.downloaded_urls.append(url)
 
                     return True
                 else:
-                    self.traps.append(url)
+                    if url not in self.traps:
+                        self.traps.append(url)
                 
             return False
 
