@@ -123,16 +123,17 @@ class Crawler:
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
-    def check_similar_links(self, parsed):
-        path = parsed.geturl()
+    def check_similar_links(self, path):
         p_list = path.split("?")
 
         if len(p_list) > 1:
             if p_list[0] not in self.url_dict:
                 self.url_dict[p_list[0]] = p_list[1]
             else:
-                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], p_list[1])
-                return ratio > 0.5
+                # print("0: ", self.url_dict[p_list[0]])
+                # print("1: ", p_list[1])
+                seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
+                return seq.ratio() > 0.5
         else:
             return False
 
@@ -147,6 +148,8 @@ class Crawler:
         Focus on different types of URLs that may have properties that impede process of crawler
         """
         parsed = urlparse(url)
+
+        #and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
         if parsed.scheme not in set(["http", "https"]):
             return False
         try:
@@ -157,10 +160,9 @@ class Crawler:
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
-                    and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
                     and len(parsed.path.lower()) < 50 \
                     and not self.dup_subdomain(parsed.path.lower()) \
-                    and not self.check_similar_links(parsed):
+                    and not self.check_similar_links(parsed.geturl()):
                 
                     self.add_subdomain(parsed)
                     self.downloaded_urls.append(url)
@@ -170,11 +172,8 @@ class Crawler:
                     return True
                 else:
                     self.traps.append(url)
-                
-            return False
+                    return False
                     
-
-
         except TypeError:
             print("TypeError for ", parsed)
             return False
