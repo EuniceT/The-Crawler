@@ -108,7 +108,7 @@ class Crawler:
         if subd != "None":
             if subd in self.subdomains:
                 # print(subd, "+1")
-                # self.subdomains[subd] += 1
+                self.subdomains[subd] += 1
 
                 if "ics.uci.edu" != subd:
                     
@@ -123,31 +123,19 @@ class Crawler:
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
-<<<<<<< HEAD
-    def check_similar_links(self, path):
-=======
-    def not_similar_links(self, parsed):
-        path = parsed.geturl()
->>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
+    def not_similar_links(self, path):
         p_list = path.split("?")
 
         if len(p_list) > 1:
             query = p_list[1]
             e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
             if p_list[0] not in self.url_dict:
-<<<<<<< HEAD
                 self.url_dict[p_list[0]] = p_list[1]
             else:
                 # print("0: ", self.url_dict[p_list[0]])
                 # print("1: ", p_list[1])
                 seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
                 return seq.ratio() > 0.5
-=======
-                self.url_dict[p_list[0]] = e_query
-            else:            
-                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], e_query).ratio()
-                return ratio < 0.5
->>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
         else:
             return True
 
@@ -174,11 +162,7 @@ class Crawler:
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
                     and len(parsed.path.lower()) < 50 \
                     and not self.dup_subdomain(parsed.path.lower()) \
-<<<<<<< HEAD
-                    and not self.check_similar_links(parsed.geturl()):
-=======
-                    and self.not_similar_links(parsed):
->>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
+                    and self.not_similar_links(parsed.geturl()):
                 
                     self.add_subdomain(parsed)
                     self.downloaded_urls.append(url)
@@ -186,14 +170,9 @@ class Crawler:
                     return True
                 else:
                     self.traps.append(url)
-<<<<<<< HEAD
-                    return False
-                    
-=======
                 
             return False
 
->>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
         except TypeError:
             print("TypeError for ", parsed)
             return False
