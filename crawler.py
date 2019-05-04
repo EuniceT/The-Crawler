@@ -4,6 +4,7 @@ import os
 import lxml.html
 from urllib.parse import urlparse
 from corpus import Corpus
+from lxml.html import fromstring
 from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,13 @@ class Crawler:
     def __init__(self, frontier):
         self.frontier = frontier
         self.corpus = Corpus()
+        self.url_count = 0
+        self.subdomain_count = 0
+        self.subdomains = {}
+        self.downloaded_urls = []
+        self.traps = []
+
+        self.subdomains["ics.uci.edu"] = 0
         self.url_dict = {}
 
     def start_crawling(self):
@@ -71,16 +79,44 @@ class Crawler:
 
         html = url_data["content"]
         url = url_data["url"]
+        #print("url  : ", url)
 
         html = lxml.html.make_links_absolute(html, url)
-
         outputLinks = []
 
         for ele, attr, link, pos in lxml.html.iterlinks(html):
-            if attr == "href":
-                outputLinks.append(link)
-        
+           if attr == "href":
+               outputLinks.append(link)
+               #print(link, " ", self.is_valid(link))
+            
         return outputLinks
+
+    def get_subdomain(self, hostname):
+        start = hostname.find("www")
+        len_start = 4
+        if start == -1:
+            start = hostname.find("//")
+            len_start = 1
+        
+        end = hostname.find(".ics.uci.edu")
+        if end != -1:
+            return hostname[start+len_start:end+len(".ics.uci.edu")]
+        return "None"
+
+    def add_subdomain(self, parsed):
+        subd = self.get_subdomain(parsed.hostname)
+        if subd != "None":
+            if subd in self.subdomains:
+                # print(subd, "+1")
+                # self.subdomains[subd] += 1
+
+                if "ics.uci.edu" != subd:
+                    
+                    if "ics.uci.edu" in self.subdomains:
+                        # print("*ics.uci.edu +1")
+                        self.subdomains["ics.uci.edu"] += 1
+            else:
+                self.subdomains[subd] = 1
 
     def dup_subdomain(self, url_path):
         p_list = url_path.split("/")
@@ -114,14 +150,30 @@ class Crawler:
         if parsed.scheme not in set(["http", "https"]):
             return False
         try:
-            return ".ics.uci.edu" in parsed.hostname \
-                   and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
+            # 1. 10.5k 2. 9287, 3. (9127 - 65, 8665 - 40)
+            if ".ics.uci.edu" in parsed.hostname:
+                if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
+                    and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
+                    and len(parsed.path.lower()) < 50 \
                     and not self.dup_subdomain(parsed.path.lower()) \
-                    and not self.check_similar_links(parsed)
+                    and not self.check_similar_links(parsed):
+                
+                    self.add_subdomain(parsed)
+                    self.downloaded_urls.append(url)
+
+                    
+                    # logging.basicConfig(filename="query_out.txt", format='Query: %parsed.query', level=logging.INFO)
+                    return True
+                else:
+                    self.traps.append(url)
+                
+            return False
+                    
+
 
         except TypeError:
             print("TypeError for ", parsed)
