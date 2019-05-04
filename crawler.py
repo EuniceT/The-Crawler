@@ -25,7 +25,7 @@ class Crawler:
         self.checked = dict()
         self.traps=set()
         # self.q = dict()
-        self.q = deque()
+        self.url_queue = deque([])
 
     def start_crawling(self):
         """
@@ -150,23 +150,22 @@ class Crawler:
 
         # p_list = url.split("?")
 
-        # if len(p_list) > 1:
-        #     query = p_list[1]
-        #     e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
-
-        #     if p_list[0] not in self.q:
-        #         self.q[p_list[0]] = p_list[1]
-        #     else:
-        #         # print("0: ", self.url_dict[p_list[0]])
-        #         # print("1: ", p_list[1])
-        #         seq = SequenceMatcher(None, self.q[p_list[0]], p_list[1])
-        #         return seq.ratio() > 0.5
-        if len(parsed.path.lower()) > 100:
-            return False
-        if len(self.q) > 4:
-            self.q.popleft()
+        self.url_queue.append(url)
+        num_similar = 0
+        url_path = url[:url.find(query)-1] 
+        if "?" in url:
+            # e_path = re.sub(r'(\w+=)(\w+)', r"\1", url)
+            for item in self.url_queue:
+                # prev = re.sub(r'(\w+=)(\w+)', r"\1", item)
+                ratio = SequenceMatcher(None, item, url_path).ratio()
+                if ratio > 0.5:
+                    num_similar+=1
+            
+        if len(self.url_queue) > 4:
+            self.url_queue.popleft()
         else:
-            self.q.append(url)
+            if num_similar > 2:
+                return False
         try:
             return ".ics.uci.edu" in parsed.hostname \
                    and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
