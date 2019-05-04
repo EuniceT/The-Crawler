@@ -2,6 +2,7 @@ import logging
 import re
 import os
 import lxml.html
+import re
 from urllib.parse import urlparse
 from corpus import Corpus
 from lxml.html import fromstring
@@ -21,10 +22,9 @@ class Crawler:
         self.url_count = 0
         self.subdomain_count = 0
         self.subdomains = {}
+        self.subdomains["ics.uci.edu"] = 0
         self.downloaded_urls = []
         self.traps = []
-
-        self.subdomains["ics.uci.edu"] = 0
         self.url_dict = {}
 
     def start_crawling(self):
@@ -123,19 +123,33 @@ class Crawler:
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
+<<<<<<< HEAD
     def check_similar_links(self, path):
+=======
+    def not_similar_links(self, parsed):
+        path = parsed.geturl()
+>>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
         p_list = path.split("?")
 
         if len(p_list) > 1:
+            query = p_list[1]
+            e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
             if p_list[0] not in self.url_dict:
+<<<<<<< HEAD
                 self.url_dict[p_list[0]] = p_list[1]
             else:
                 # print("0: ", self.url_dict[p_list[0]])
                 # print("1: ", p_list[1])
                 seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
                 return seq.ratio() > 0.5
+=======
+                self.url_dict[p_list[0]] = e_query
+            else:            
+                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], e_query).ratio()
+                return ratio < 0.5
+>>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
         else:
-            return False
+            return True
 
 
     '''1:10k  2:9219'''
@@ -144,8 +158,6 @@ class Crawler:
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
-
-        Focus on different types of URLs that may have properties that impede process of crawler
         """
         parsed = urlparse(url)
 
@@ -162,18 +174,26 @@ class Crawler:
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
                     and len(parsed.path.lower()) < 50 \
                     and not self.dup_subdomain(parsed.path.lower()) \
+<<<<<<< HEAD
                     and not self.check_similar_links(parsed.geturl()):
+=======
+                    and self.not_similar_links(parsed):
+>>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
                 
                     self.add_subdomain(parsed)
                     self.downloaded_urls.append(url)
 
-                    
-                    # logging.basicConfig(filename="query_out.txt", format='Query: %parsed.query', level=logging.INFO)
                     return True
                 else:
                     self.traps.append(url)
+<<<<<<< HEAD
                     return False
                     
+=======
+                
+            return False
+
+>>>>>>> b7e785cb717300b565ec33df7471380d407e74e2
         except TypeError:
             print("TypeError for ", parsed)
             return False
