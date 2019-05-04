@@ -4,6 +4,7 @@ import os
 import lxml.html
 from urllib.parse import urlparse
 from corpus import Corpus
+from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class Crawler:
     def __init__(self, frontier):
         self.frontier = frontier
         self.corpus = Corpus()
+        self.url_dict = {}
 
     def start_crawling(self):
         """
@@ -77,8 +79,6 @@ class Crawler:
         for ele, attr, link, pos in lxml.html.iterlinks(html):
             if attr == "href":
                 outputLinks.append(link)
-            #print(attr)
-            
         
         return outputLinks
 
@@ -87,8 +87,21 @@ class Crawler:
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
+    def check_similar_links(self, parsed):
+        path = parsed.geturl()
+        p_list = path.split("?")
 
-    '''1:10k  2:9296'''
+        if len(p_list) > 1:
+            if p_list[0] not in self.url_dict:
+                self.url_dict[p_list[0]] = p_list[1]
+            else:
+                ratio = SequenceMatcher(None,self.url_dict[p_list[0]], p_list[1])
+                return ratio > 0.5
+        else:
+            return False
+
+
+    '''1:10k  2:9219'''
     def is_valid(self, url):
         """
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
@@ -107,7 +120,8 @@ class Crawler:
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
-                    and not self.dup_subdomain(parsed.path.lower())
+                    and not self.dup_subdomain(parsed.path.lower()) \
+                    and not self.check_similar_links(parsed)
 
         except TypeError:
             print("TypeError for ", parsed)
