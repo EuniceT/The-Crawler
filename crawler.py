@@ -23,6 +23,8 @@ class Crawler:
         self.downloaded_urls = []
         self.traps = []
 
+        self.subdomains["ics.uci.edu"] = 0
+
     def start_crawling(self):
         """
         This method starts the crawling process which is scraping urls from the next available link in frontier and adding
@@ -89,8 +91,32 @@ class Crawler:
         return outputLinks
 
     def get_subdomain(self, hostname):
-        end = hostname.find(".ics.uci.edu") 
-        return hostname[0:end]
+        start = hostname.find("www")
+        len_start = 4
+        if start == -1:
+            start = hostname.find("//")
+            len_start = 1
+        
+        end = hostname.find(".ics.uci.edu")
+        if end != -1:
+            return hostname[start+len_start:end+len(".ics.uci.edu")]
+        return "None"
+
+    def add_subdomain(self, parsed):
+        subd = self.get_subdomain(parsed.hostname)
+        if subd != "None":
+            if subd in self.subdomains:
+                # print(subd, "+1")
+                # self.subdomains[subd] += 1
+
+                if "ics.uci.edu" != subd:
+                    
+                    if "ics.uci.edu" in self.subdomains:
+                        # print("*ics.uci.edu +1")
+                        self.subdomains["ics.uci.edu"] += 1
+            else:
+                self.subdomains[subd] = 1
+        
 
     def is_valid(self, url):
         """
@@ -104,21 +130,26 @@ class Crawler:
         if parsed.scheme not in set(["http", "https"]):
             return False
         try:
-            self.subdomains[self.get_subdomain(parsed.hostname)] += 1
             # 1. 10.5k 2. 9287, 3. (9127 - 65, 8665 - 40)
-            if ".ics.uci.edu" in parsed.hostname \
-                    and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
+            if ".ics.uci.edu" in parsed.hostname:
+                if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
                                     + "|thmx|mso|arff|rtf|jar|csv" \
                                     + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
                     and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
-                    and len(parsed.path.lower()) < 40 :
-                self.downloaded_urls.append(url)
-                return True
-            else:
-                self.traps.append(url)
-                return False
+                    and len(parsed.path.lower()) < 50 :
+                
+                    self.add_subdomain(parsed)
+                    self.downloaded_urls.append(url)
+
+                    
+                    # logging.basicConfig(filename="query_out.txt", format='Query: %parsed.query', level=logging.INFO)
+                    return True
+                else:
+                    self.traps.append(url)
+                
+            return False
 
         except TypeError:
             print("TypeError for ", parsed)
