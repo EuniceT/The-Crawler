@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from corpus import Corpus
 from lxml.html import fromstring
 from difflib import SequenceMatcher
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,9 @@ class Crawler:
         self.subdomains["ics.uci.edu"] = 0
         self.downloaded_urls = []
         self.traps = []
+        
         self.url_dict = {}
+        self.url_queue = deque([])
 
     def start_crawling(self):
         """
@@ -124,21 +127,38 @@ class Crawler:
         return len(p_set) != len(p_list)
 
     def not_similar_links(self, path):
-        p_list = path.split("?")
+        '''p_list = path.split("?")
 
         if len(p_list) > 1:
             query = p_list[1]
             e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
 
             if p_list[0] not in self.url_dict:
-                self.url_dict[p_list[0]] = p_list[1]
+                self.url_dict[p_list[0]] = e_query
             else:
                 # print("0: ", self.url_dict[p_list[0]])
                 # print("1: ", p_list[1])
-                seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
+                seq = SequenceMatcher(None, self.url_dict[p_list[0]], e_query)
                 return seq.ratio() > 0.5
         else:
-            return True
+            return True '''
+
+        self.url_queue.append(path)
+        num_similar = 0
+
+        if "?" in path:
+            e_path = re.sub(r'(\w+=)(\w+)', r"\1", path)
+            print(e_path)
+            for item in self.url_queue:
+                prev = re.sub(r'(\w+=)(\w+)', r"\1", item)
+                ratio = SequenceMatcher(None, prev , e_path).ratio()
+                if ratio > 0.5:
+                    num_similar+=1
+            
+        if len(self.url_queue) > 4:
+            self.url_queue.popleft()
+
+        return num_similar < 2
 
 
     '''1:10k  2:9219'''
@@ -181,5 +201,3 @@ class Crawler:
         except TypeError:
             print("TypeError for ", parsed)
             return False
-
-    
