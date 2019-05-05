@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from corpus import Corpus
 from lxml.html import fromstring
 from difflib import SequenceMatcher
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class Crawler:
         self.downloaded_urls = []
         self.traps = []
         self.url_dict = {}
+        self.same_url_que = deque([])
 
     def start_crawling(self):
         """
@@ -110,9 +112,7 @@ class Crawler:
                 # print(subd, "+1")
                 self.subdomains[subd] += 1
 
-                if "ics.uci.edu" != subd:
-                    
-                    if "ics.uci.edu" in self.subdomains:
+                if "ics.uci.edu" != subd and "ics.uci.edu" in self.subdomains:
                         # print("*ics.uci.edu +1")
                         self.subdomains["ics.uci.edu"] += 1
             else:
@@ -123,22 +123,42 @@ class Crawler:
         p_set = set(p_list)
         return len(p_set) != len(p_list)
 
+    
+
     def not_similar_links(self, path):
+
         p_list = path.split("?")
+        # print(path, " ", len(path))
 
-        if len(p_list) > 1:
-            query = p_list[1]
-            e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
+        # if len(p_list) > 1:
+        #     query = p_list[1]
+        #     e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
+        #     print("EQ: ", e_query)
 
-            if p_list[0] not in self.url_dict:
-                self.url_dict[p_list[0]] = p_list[1]
-            else:
-                # print("0: ", self.url_dict[p_list[0]])
-                # print("1: ", p_list[1])
-                seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
-                return seq.ratio() > 0.5
-        else:
-            return True
+        #     if len(self.same_url_que) > 0:
+        #         self.same_url_que.append(p_list[0] + "?" + e_query)
+        #     else: 
+        #         print("-------------")
+        #         while len(self.same_url_que) != 0:
+        #             url = self.same_url_que.pop()
+        #             print("     URL: ", url, "====", p_list[0] + "?" + e_query)
+        #             if url != (p_list[0] + "?" + e_query):
+        #                 self.same_url_que.append(url)
+        #                 print("-------------T")
+        #                 return True
+        #         print("-------------F")
+        #     return False
+
+            # if p_list[0] not in self.url_dict:
+            #     self.url_dict[p_list[0]] = p_list[1]
+            # else:
+            #     print("00: ", p_list[0])
+            #     print("01: ", self.url_dict[p_list[0]])
+            #     print("11: ", p_list[1])
+            #     seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
+            #     return seq.ratio() > 0.5
+        # else:
+        #     return True
 
 
     '''1:10k  2:9219'''
