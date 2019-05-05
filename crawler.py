@@ -8,6 +8,8 @@ from corpus import Corpus
 from lxml.html import fromstring
 from difflib import SequenceMatcher
 from collections import deque
+import sys
+import operator
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +22,16 @@ class Crawler:
     def __init__(self, frontier):
         self.frontier = frontier
         self.corpus = Corpus()
-        self.url_count = 0
-        self.subdomain_count = 0
+        
         self.subdomains = {}
         self.subdomains["ics.uci.edu"] = 0
         self.downloaded_urls = []
+        self.out_links = {}
         self.traps = []
-        self.url_dict = {}
-        self.same_url_que = deque([])
+        
+        self.checked = {}
+        #self.url_failed = []
+
 
     def start_crawling(self):
         """
@@ -43,6 +47,7 @@ class Crawler:
                 if self.corpus.get_file_name(next_link) is not None:
                     if self.is_valid(next_link):
                         self.frontier.add_url(next_link)
+
 
     def fetch_url(self, url):
         """
@@ -69,6 +74,7 @@ class Crawler:
 
         return url_data
 
+
     def extract_next_links(self, url_data):
         """
         The url_data coming from the fetch_url method will be given as a parameter to this method. url_data contains the
@@ -81,7 +87,6 @@ class Crawler:
 
         html = url_data["content"]
         url = url_data["url"]
-        #print("url  : ", url)
 
         html = lxml.html.make_links_absolute(html, url)
         outputLinks = []
@@ -89,10 +94,15 @@ class Crawler:
         for ele, attr, link, pos in lxml.html.iterlinks(html):
            if attr == "href":
                outputLinks.append(link)
-               #print(link, " ", self.is_valid(link))
-            
+
+        self.out_links[url] = len(outputLinks)
         return outputLinks
 
+
+    """
+    Gets the subdomain from the hostname and takse out the www. For example, if www.calendar.ics.uci.edu was the hostname
+    , then it would return calender. Returns "None" if ics.uci.edu is not found.
+    """
     def get_subdomain(self, hostname):
         start = hostname.find("www")
         len_start = 4
@@ -105,101 +115,99 @@ class Crawler:
             return hostname[start+len_start:end+len(".ics.uci.edu")]
         return "None"
 
+
+    """
+    Adds suddomain to a dictionary and tracks how many times it has been visited.
+    """
     def add_subdomain(self, parsed):
         subd = self.get_subdomain(parsed.hostname)
         if subd != "None":
             if subd in self.subdomains:
-                # print(subd, "+1")
                 self.subdomains[subd] += 1
 
                 if "ics.uci.edu" != subd and "ics.uci.edu" in self.subdomains:
-                        # print("*ics.uci.edu +1")
                         self.subdomains["ics.uci.edu"] += 1
             else:
                 self.subdomains[subd] = 1
 
+
+    """
+    Returns the path with the most outlinks.
+    """
+    def get_max_out_links(self):
+        return max(self.out_links, key=lambda x: self.out_links[x])
+
+
+    """
+    Returns true if the subdomain has duplicate folders, such as www.ics.uci.edu/datasets/datasets/datasets/datasets.
+    False otherwise.
+    """
     def dup_subdomain(self, url_path):
         p_list = list(filter(None, url_path.split("/")))
         p_set = set(p_list)
-        return len(p_set) != len(p_list)
-
-    
-
-    def not_similar_links(self, path):
-
-        p_list = path.split("?")
-        # print(path, " ", len(path))
-
-        # if len(p_list) > 1:
-        #     query = p_list[1]
-        #     e_query = re.sub(r'(\w+=)(\w+)', r"\1", query)
-        #     print("EQ: ", e_query)
-
-        #     if len(self.same_url_que) > 0:
-        #         self.same_url_que.append(p_list[0] + "?" + e_query)
-        #     else: 
-        #         print("-------------")
-        #         while len(self.same_url_que) != 0:
-        #             url = self.same_url_que.pop()
-        #             print("     URL: ", url, "====", p_list[0] + "?" + e_query)
-        #             if url != (p_list[0] + "?" + e_query):
-        #                 self.same_url_que.append(url)
-        #                 print("-------------T")
-        #                 return True
-        #         print("-------------F")
-        #     return False
-
-            # if p_list[0] not in self.url_dict:
-            #     self.url_dict[p_list[0]] = p_list[1]
-            # else:
-            #     print("00: ", p_list[0])
-            #     print("01: ", self.url_dict[p_list[0]])
-            #     print("11: ", p_list[1])
-            #     seq = SequenceMatcher(None, self.url_dict[p_list[0]], p_list[1])
-            #     return seq.ratio() > 0.5
-        # else:
-        #     return True
+        #return len(p_set) != len(p_list)
+        return len(p_set) + 3 < len(p_list) # Threshold of 3
 
 
-    '''1:10k  2:9219'''
+    """
+    Adds the url to a dictionary with all the previously checked urls that contain a query. Returns false if the
+    url has been visited more times than the threshold. True otherwise.
+    th = 500 -> 5100, th = 750 -> 5200
+    th = 500 -> 5200 with threshold +3 <, +5 <
+    th = 1000 -> 5500
+    """
+    def pass_threshold(self, url, query):    
+        threshold = 1000
+
+        #string of everything before the query
+        url_path = url[:url.find(query)-1]
+
+        if len(query) != 0:
+          if url_path in self.checked:
+              self.checked[url_path] += 1
+          else:
+              self.checked[url_path] = 1
+
+          if self.checked[url_path] > threshold:
+              return True
+
+        return False
+
+
     def is_valid(self, url):
         """
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
         """
+        
         parsed = urlparse(url)
 
-        #and len(re.findall(r'(\w+)/((\1))+', parsed.path.lower())) < 2 \
         if parsed.scheme not in set(["http", "https"]):
             return False
         try:
-            # 1. 10.5k 2. 9287, 3. (9127 - 65, 8665 - 40)
-            # taking out not similar - 8893 with dup_subdomain updated; with adding not similar down to 3107
+            if self.dup_subdomain(parsed.path.lower()) or self.pass_threshold(parsed.path.lower(), parsed.query):
+                if url not in self.traps:
+                    self.traps.append(url)
+                return False
 
             if ".ics.uci.edu" in parsed.hostname:
+
                 if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
-                                    + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
-                                    + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
-                                    + "|thmx|mso|arff|rtf|jar|csv" \
-                                    + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()) \
-                    and len(parsed.path.lower()) < 50 \
-                    and not self.dup_subdomain(parsed.path.lower()) \
-                    and self.not_similar_links(parsed.geturl()):
+                                + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
+                                + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
+                                + "|thmx|mso|arff|rtf|jar|csv" \
+                                + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()):
                 
-                    self.add_subdomain(parsed)
                     if url not in self.downloaded_urls:
                         self.downloaded_urls.append(url)
 
                     return True
-                else:
-                    if url not in self.traps:
-                        self.traps.append(url)
-                
             return False
 
         except TypeError:
             print("TypeError for ", parsed)
             return False
 
-    
+        finally:
+            self.add_subdomain(parsed)

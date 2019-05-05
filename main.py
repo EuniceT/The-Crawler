@@ -22,10 +22,13 @@ if __name__ == "__main__":
 
     
     sys.stdout = open("url_out.txt", "w")
+    print("DOWNLOADED URLS [", len(crawler.downloaded_urls), "]")
+    print("TRAPS [", len(crawler.traps), "]")
+    print("MAX OUTLINKS PAGE: ", crawler.get_max_out_links(), "\n\n")
 
-    print("DOWNLOADED URLS: ", crawler.downloaded_urls, "\n\n")
-    print("TRAPS: ", crawler.traps, "\n\n")
+    print("DOWNLOADED URLS [", len(crawler.downloaded_urls), "]: ", crawler.downloaded_urls, "\n\n")
+    print("TRAPS [", len(crawler.traps), "]: ", crawler.traps, "\n\n")
     print("SUBDOMAINS: ", crawler.subdomains, "\n\n")
+    print("OUT LINKS: ", crawler.out_links, "\n\n")
 
-    # url_data = crawler.fetch_url("https://ics.uci.edu")
-    # crawler.extract_next_links(url_data)
+
