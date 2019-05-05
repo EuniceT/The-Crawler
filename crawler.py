@@ -122,7 +122,17 @@ class Crawler:
                 self.traps.add(url)
                 return False
         #make a threshold
-        threshold= 100
+        #like 5000
+        # threshold= 230
+
+        #like 5200
+        #threshold = 275
+
+        #like 5300
+        # threshold = 300
+
+        #like 5400
+        # threshold = 325
         query = parsed.query
 
         #string of everything before the query
@@ -150,22 +160,22 @@ class Crawler:
 
         # p_list = url.split("?")
 
-        self.url_queue.append(url)
-        num_similar = 0
-        url_path = url[:url.find(query)-1] 
-        if "?" in url:
-            # e_path = re.sub(r'(\w+=)(\w+)', r"\1", url)
-            for item in self.url_queue:
-                # prev = re.sub(r'(\w+=)(\w+)', r"\1", item)
-                ratio = SequenceMatcher(None, item, url_path).ratio()
-                if ratio > 0.5:
-                    num_similar+=1
+        # self.url_queue.append(url)
+        # num_similar = 0
+        # url_path = url[:url.find(query)-1] 
+        # if "?" in url:
+        #     # e_path = re.sub(r'(\w+=)(\w+)', r"\1", url)
+        #     for item in self.url_queue:
+        #         # prev = re.sub(r'(\w+=)(\w+)', r"\1", item)
+        #         ratio = SequenceMatcher(None, item, url_path).ratio()
+        #         if ratio > 0.5:
+        #             num_similar+=1
             
-        if len(self.url_queue) > 4:
-            self.url_queue.popleft()
-        else:
-            if num_similar > 2:
-                return False
+        # if len(self.url_queue) > 4:
+        #     self.url_queue.popleft()
+        # else:
+        #     if num_similar > 2:
+        #         return False
         try:
             return ".ics.uci.edu" in parsed.hostname \
                    and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
