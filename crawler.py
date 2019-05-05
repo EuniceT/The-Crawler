@@ -133,6 +133,9 @@ class Crawler:
 
         #like 5400
         # threshold = 325
+
+        #like 5600
+        threshold = 500
         query = parsed.query
 
         #string of everything before the query
