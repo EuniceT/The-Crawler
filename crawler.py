@@ -30,6 +30,7 @@ class Crawler:
         self.traps = []
         
         self.checked = {}
+        self.threshold = 1000
         #self.url_failed = []
 
 
@@ -90,12 +91,15 @@ class Crawler:
 
         html = lxml.html.make_links_absolute(html, url)
         outputLinks = []
+        num_valid_outputlinks = 0
 
         for ele, attr, link, pos in lxml.html.iterlinks(html):
-           if attr == "href":
-               outputLinks.append(link)
+            if attr == "href":
+                outputLinks.append(link)
+            if self.is_valid_mini(link):
+                num_valid_outputlinks += 1
 
-        self.out_links[url] = len(outputLinks)
+        self.out_links[url] = num_valid_outputlinks # len(outputLinks) # otherwise have to check if each link is valid
         return outputLinks
 
 
@@ -157,8 +161,6 @@ class Crawler:
     th = 1000 -> 5500
     """
     def pass_threshold(self, url, query):    
-        threshold = 1000
-
         #string of everything before the query
         url_path = url[:url.find(query)-1]
 
@@ -168,10 +170,37 @@ class Crawler:
           else:
               self.checked[url_path] = 1
 
-          if self.checked[url_path] > threshold:
+          if self.checked[url_path] > self.threshold:
               return True
 
         return False
+
+    def is_valid_mini(self, url):
+        parsed = urlparse(url)
+
+        if parsed.scheme not in set(["http", "https"]):
+            return False
+        try:
+            url_path = url[:url.find(parsed.query)-1]
+            if self.dup_subdomain(parsed.path.lower()) or (url_path in self.checked and self.checked[url_path] > self.threshold):
+                return False
+
+            if ".ics.uci.edu" in parsed.hostname:
+                if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
+                                + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
+                                + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
+                                + "|thmx|mso|arff|rtf|jar|csv" \
+                                + "|rm|smil|wmv|swf|wma|zip|rar|gz|pdf)$", parsed.path.lower()):
+                
+                    return True
+
+            return False
+
+        except TypeError:
+            #print("MINI TypeError for ", parsed)
+            return False
+
+                    
 
 
     def is_valid(self, url):
@@ -192,7 +221,6 @@ class Crawler:
                 return False
 
             if ".ics.uci.edu" in parsed.hostname:
-
                 if not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                 + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                 + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
@@ -201,8 +229,8 @@ class Crawler:
                 
                     if url not in self.downloaded_urls:
                         self.downloaded_urls.append(url)
-
                     return True
+
             return False
 
         except TypeError:
@@ -211,3 +239,4 @@ class Crawler:
 
         finally:
             self.add_subdomain(parsed)
+            
